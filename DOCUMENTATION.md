@@ -89,3 +89,37 @@ No se usa `PASS` para una integraciÃ³n que solo compila. Los estados se separa
 - Providers y pipeline: `REAL_API_VALIDATED`.
 - Calidad comercial: `DISCOVERY_REAL_BUT_NEEDS_TUNING`; el lote esta dominado por operadores logisticos y solo una de cinco empresas muestra evidencia explicita de cadena de frio. Las demas quedan para revision humana como posibles socios o capacidad complementaria.
 - Telegram, Gmail, Sheets, OAuth y Docker quedaron fuera de esta iteracion.
+
+## Tuning comercial por demanda externa - 2026-09-23
+
+- Se agregaron `businessRole`, `transportDemandRole`, estado de flota propia y señales explícitas de tercerización.
+- El puntaje ahora separa ajuste de operación (0-30) y demanda externa (0-30), con total de 100 junto con geografía, recurrencia, contacto y recencia.
+- Operadores logísticos, carriers y couriers reciben una penalización cuando no hay señal de compra de capacidad externa. Una flota propia por sí sola no descarta un lead.
+- El planner prioriza distribuidores, mayoristas, fabricantes, food service, importadores, e-commerce y señales de contratación de fleteros. Los avisos laborales se conservan como señal de compra y no como empresa.
+- Se clasifican los contactos por rol y se preservan referencias a evidencia persistida en el research.
+- El mapeo hacia la columna legacy `vehicle_fit` conserva su límite histórico de 25 mediante una conversión proporcional desde el nuevo rango 0-30.
+
+### Reprocesamiento de los cinco leads anteriores
+
+| Empresa | Score anterior | Score nuevo | Rol | Demanda |
+|---|---:|---:|---|---|
+| Distribuidora Metropolitana | 63 | 50 | LOGISTICS_OPERATOR | LIKELY_SELLER |
+| Logistica Gitt | 73 | 94 | LOGISTICS_OPERATOR | BOTH |
+| Tops Logistica | 88 | 58 | LOGISTICS_OPERATOR | LIKELY_SELLER |
+| DYL Integral | 100 | 58 | LOGISTICS_OPERATOR | LIKELY_SELLER |
+| Expreso Trole | 63 | 60 | LOGISTICS_OPERATOR | LIKELY_SELLER |
+
+Gitt conserva prioridad por evidencia explícita de incorporación de personas con vehículo propio a su red de reparto. Los otros cuatro quedaron como vendedores de transporte sin evidencia pública suficiente de tercerización.
+
+### Segunda corrida real
+
+- Reporte: `reports/live-discovery-2026-09-23T22-55-28-312Z.json` y Markdown asociado.
+- Providers: Brave, Google Places y OpenAI con requests reales; `OUTREACH_ENABLED=false`.
+- 2 requests de búsqueda, 40 resultados raw, 38 candidatos, 15 compañías seleccionadas, 15 crawls, 14 investigaciones AI.
+- Calidad: 2 GOOD, 11 MAYBE, 2 BAD, 0 COMPETITOR.
+- Tasas: GOOD 13.3%, GOOD+MAYBE 86.7%, BAD 13.3%, COMPETITOR 0%.
+- Refrigeración: 0 REFRIGERATED, 2 NON_REFRIGERATED, 12 MIXED, 1 UNKNOWN.
+- Costos: 14 llamadas Luna, 0 Terra, 71.807 tokens; costo no estimado porque el proyecto no tiene precios configurados.
+- El reporte conserva un error explícito para XPallet.com Argentina porque el crawl no dejó evidencia persistida suficiente para investigar. No se convirtió en éxito falso.
+
+El gate de esta iteración es `TARGETING_NEEDS_TUNING`: la cobertura GOOD+MAYBE supera el objetivo inicial, pero GOOD todavía está por debajo de 40%. No se activó outreach ni se enviaron mensajes.
