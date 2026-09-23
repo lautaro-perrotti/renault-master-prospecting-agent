@@ -1,0 +1,10 @@
+import {z} from 'zod';
+export const Mode=z.enum(['MANUAL','SEMI_AUTO','AUTO']); export type Mode=z.infer<typeof Mode>;
+export const SignalType=z.enum(['REFRIGERATED_PRODUCTS','FROZEN_PRODUCTS','COLD_CHAIN','DELIVERY_OPERATION','WHOLESALE','DISTRIBUTION','OWN_LOGISTICS','OUTSOURCED_LOGISTICS','LOOKING_FOR_DRIVER','LOOKING_FOR_CARRIER','EXPANSION','LOCATION','CONTACT','OTHER']); export type SignalType=z.infer<typeof SignalType>;
+export const SourceType=z.enum(['GOOGLE_PLACES','WEB_SEARCH','WEBSITE','INSTAGRAM','FACEBOOK','LINKEDIN','X','TIKTOK','YOUTUBE','DIRECTORY','NEWS','JOB_POSTING','OTHER']); export type SourceType=z.infer<typeof SourceType>;
+export const LeadStatus=z.enum(['DISCOVERED','RESEARCHING','QUALIFIED','REVIEW','APPROVED','SENT','SEQUENCE_ACTIVE','REPLIED','STOPPED','DISCARDED','BLOCKED']); export type LeadStatus=z.infer<typeof LeadStatus>;
+export const ReplyClass=z.enum(['INTERESTED','QUESTION','NOT_INTERESTED','OPT_OUT','AUTO_REPLY','BOUNCE','UNKNOWN']); export type ReplyClass=z.infer<typeof ReplyClass>;
+export type ScoreBreakdown={fit:number,need:number,geography:number,contactQuality:number,recency:number,total:number,confidence:'HIGH'|'MEDIUM'|'LOW'};
+export const EvidenceInput=z.object({companyId:z.string(),sourceType:SourceType,sourceUrl:z.string().url(),title:z.string().min(1),excerpt:z.string().min(1),signalType:SignalType,confidence:z.number().min(0).max(1)});
+export function classifyScore(s:ScoreBreakdown,c:{AUTO_SEND_THRESHOLD:number;REVIEW_THRESHOLD:number}){if(s.total>=c.AUTO_SEND_THRESHOLD)return'AUTO_ELIGIBLE';if(s.total>=c.REVIEW_THRESHOLD)return'REVIEW';return'DISCARD'}
+export function scoreSignals(input:{need:number;geography:number;contact:number;fit:number;recency:number;confidence:ScoreBreakdown['confidence']}):ScoreBreakdown{const fit=Math.max(0,Math.min(40,input.fit)),need=Math.max(0,Math.min(25,input.need)),geography=Math.max(0,Math.min(15,input.geography)),contactQuality=Math.max(0,Math.min(10,input.contact)),recency=Math.max(0,Math.min(10,input.recency));return{fit,need,geography,contactQuality,recency,total:fit+need+geography+contactQuality+recency,confidence:input.confidence}}

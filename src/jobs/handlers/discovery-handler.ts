@@ -1,0 +1,53 @@
+import {sql} from 'drizzle-orm';
+import type {Config} from '../../config.js';
+import type {Db} from '../../db/client.js';
+import {audit} from '../../audit.js';
+import {corporateDomain,normalizeCompanyName,socialNetwork} from '../../enrichment/company.js';
+import {DiscoveryEngine} from '../../discovery/engine.js';
+import {QueryGenerator} from '../../discovery/query-generator.js';
+import {classifySearchResult} from '../../discovery/classification.js';
+import {entityFromResult} from '../../discovery/entity.js';
+import {GooglePlacesDiscoveryProvider} from '../../discovery/google-places.js';
+import {BraveSearchProvider} from '../../discovery/brave-search.js';
+import {SocialDiscoveryProvider} from '../../discovery/social-search.js';
+import type {JobDependencies} from '../dependencies.js';
+import {enqueue} from '../queue.js';
+import {operationallyAllowed} from '../../operations/state.js';
+
+export async function discoveryHandler(db:Db,config:Config,job:any,deps:JobDependencies){
+  if(!await operationallyAllowed(db,'DISCOVERY'))return;
+  const run=(await db.execute(sql`INSERT INTO runs(type,status,metadata) VALUES('DISCOVERY','RUNNING',${JSON.stringify({query:job.payload.query??null})}::jsonb) RETURNING id`)).rows[0] as any;
+  const providers=deps.providers??[...(config.GOOGLE_MAPS_API_KEY?[new GooglePlacesDiscoveryProvider(config)]:[]),...(config.BRAVE_SEARCH_API_KEY?[new BraveSearchProvider(config),new SocialDiscoveryProvider(config)]:[])];
+  if(!providers.length)throw new Error('NO_DISCOVERY_PROVIDER_CONFIGURED');
+  try{
+    const engine=new DiscoveryEngine(providers,new QueryGenerator(config.SERVICE_COVERAGE));
+    const detailed=await engine.runDetailed(config.BASE_LOCATION,job.payload.query as string|undefined,{maxSearchRequests:config.DISCOVERY_MAX_SEARCH_REQUESTS,maxRuntimeSeconds:config.DISCOVERY_MAX_RUNTIME_SECONDS,maxNewCompanies:config.DISCOVERY_MAX_NEW_COMPANIES,minMarginalNovelty:config.DISCOVERY_MIN_MARGINAL_NOVELTY});
+    for(const execution of detailed.executions){
+      await db.execute(sql`INSERT INTO provider_executions(run_id,provider,query,status,result_count,error_message) VALUES(${run.id},${execution.provider},${execution.query},${execution.status},${execution.results.length},${execution.error??null})`);
+      await db.execute(sql`INSERT INTO search_queries(run_id,source,query,strategy,fingerprint,results_count,stop_reason) VALUES(${run.id},${execution.provider},${execution.query},'PLANNED',md5(${`${execution.provider}|${execution.query}`}),${execution.results.length},${detailed.stopReason}) ON CONFLICT DO NOTHING`);
+      if(execution.status==='ERROR')await audit(db,'PROVIDER_DEGRADED',{provider:execution.provider,query:execution.query,error:execution.error},undefined,job.id,run.id);
+    }
+    for(const result of detailed.results){
+      const classification=classifySearchResult({url:result.website??result.sourceUrl,title:result.name,description:String(result.metadata.description??'')});
+      const raw=(await db.execute(sql`INSERT INTO raw_search_results(run_id,provider,query,result_url,title,description,classification,classification_confidence,metadata) VALUES(${run.id},${result.sourceType},${String(result.metadata.query??job.payload.query??'')},${result.sourceUrl},${result.name},${String(result.metadata.description??'')},${classification.kind},${classification.confidence},${JSON.stringify(result.metadata)}::jsonb) ON CONFLICT(provider,query,result_url) DO UPDATE SET classification=excluded.classification RETURNING id`)).rows[0] as any;
+      const network=classification.network??socialNetwork(result.sourceUrl);
+      if(classification.kind==='SOCIAL_PROFILE'){
+        const existing=(await db.execute(sql`SELECT id FROM companies WHERE normalized_name=${normalizeCompanyName(result.name)} AND status NOT IN ('BLOCKED','DISCARDED') LIMIT 1`)).rows[0] as any;
+        if(existing)await db.execute(sql`INSERT INTO social_profiles(company_id,network,url) VALUES(${existing.id},${network??'OTHER'},${result.sourceUrl}) ON CONFLICT DO NOTHING`);
+        continue;
+      }
+      const candidate=result.sourceType==='GOOGLE_PLACES'&&result.name?{name:result.name,normalizedName:normalizeCompanyName(result.name),domain:corporateDomain(result.website),sourceUrl:result.sourceUrl,confidence:95,metadata:{place:true}}:entityFromResult({title:result.name,url:result.website??result.sourceUrl,kind:classification.kind,confidence:classification.confidence,description:String(result.metadata.description??'')});
+      if(!candidate)continue;
+      await db.execute(sql`INSERT INTO entity_candidates(raw_result_id,name,normalized_name,corporate_domain,source_url,confidence,metadata) VALUES(${raw.id},${candidate.name},${candidate.normalizedName},${candidate.domain??null},${candidate.sourceUrl},${candidate.confidence},${JSON.stringify(candidate.metadata)}::jsonb) ON CONFLICT(raw_result_id) DO NOTHING`);
+      const existing=(await db.execute(candidate.domain?sql`SELECT id,status FROM companies WHERE domain=${candidate.domain} OR normalized_name=${candidate.normalizedName} LIMIT 1`:sql`SELECT id,status FROM companies WHERE normalized_name=${candidate.normalizedName} LIMIT 1`)).rows[0] as any;
+      let companyId=existing?.id as string|undefined;
+      if(existing?.status==='BLOCKED'||existing?.status==='DISCARDED')continue;
+      if(!companyId){const inserted=await db.execute(sql`INSERT INTO companies(name,normalized_name,domain,address,phone,website,google_place_id,status) VALUES(${candidate.name},${candidate.normalizedName},${candidate.domain??null},${result.address??null},${result.phone??null},${result.website??null},${result.externalId??null},'DISCOVERED') RETURNING id`);companyId=(inserted.rows[0] as any).id}
+      await db.execute(sql`INSERT INTO sources(company_id,source_type,url,metadata) VALUES(${companyId},${result.sourceType},${result.sourceUrl},${JSON.stringify({...result.metadata,rawResultId:raw.id,classification:classification.kind})}::jsonb) ON CONFLICT DO NOTHING`);
+      await audit(db,'COMPANY_RESOLVED',{rawResultId:raw.id,classification:classification.kind,sourceUrl:result.sourceUrl},companyId,job.id,run.id);
+      if(result.website)await enqueue(db,'CRAWL',{companyId,website:result.website},new Date(),{idempotencyKey:`CRAWL:${companyId}:${result.website}`});
+    }
+    await db.execute(sql`UPDATE runs SET status='DONE',finished_at=now(),metadata=metadata||${JSON.stringify({stopReason:detailed.stopReason,resultCount:detailed.results.length})}::jsonb WHERE id=${run.id}`);
+    await audit(db,'DISCOVERY_COMPLETED',{stopReason:detailed.stopReason,resultCount:detailed.results.length},undefined,job.id,run.id);
+  }catch(error){await db.execute(sql`UPDATE runs SET status='FAILED',finished_at=now(),metadata=metadata||${JSON.stringify({error:String(error)})}::jsonb WHERE id=${run.id}`);throw error}
+}

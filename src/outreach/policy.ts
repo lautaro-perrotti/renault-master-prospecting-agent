@@ -1,0 +1,1 @@
+import type {Mode} from '../domain.js'; export function canSend(input:{mode:Mode;score:number;autoThreshold:number;reviewThreshold:number;approved:boolean;followUp:boolean}){if(input.followUp)return input.mode!=='MANUAL'||input.approved;if(input.mode==='AUTO')return input.score>=input.autoThreshold;return input.approved}

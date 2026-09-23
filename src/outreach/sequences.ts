@@ -1,0 +1,1 @@
+export function nextFollowUp(step:number,from=new Date()){const d=new Date(from);d.setDate(d.getDate()+([0,3,7][step]??7));return d} export function shouldStop(classification:string){return['INTERESTED','QUESTION','NOT_INTERESTED','OPT_OUT','BOUNCE'].includes(classification)}

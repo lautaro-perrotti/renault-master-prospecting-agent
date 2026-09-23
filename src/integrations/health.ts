@@ -1,0 +1,23 @@
+import type {Config} from '../config.js';
+import {configured} from '../config.js';
+import {chromium} from 'playwright';
+import type {Pool} from 'pg';
+import {google} from 'googleapis';
+export type HealthStatus='PASS'|'CONFIGURED'|'NOT_CONFIGURED'|'ERROR';
+export type HealthReport={checks:Record<string,HealthStatus>;configuredIntegrations:number;externalIntegrationsValidated:number};
+async function probe(url:string,init?:RequestInit){try{const response=await fetch(url,{...init,signal:AbortSignal.timeout(10000)});return response.ok?'PASS' as const:'ERROR' as const}catch{return'ERROR' as const}}
+async function telegram(token?:string){return token?probe(`https://api.telegram.org/bot${token}/getMe`):'NOT_CONFIGURED'}
+export async function doctor(config:Config,pool?:Pool):Promise<HealthReport>{
+  const checks:Record<string,HealthStatus>={Postgres:configured(config.DATABASE_URL)?'CONFIGURED':'NOT_CONFIGURED',Worker:'NOT_CONFIGURED',Scheduler:'NOT_CONFIGURED','Telegram API':await telegram(config.TELEGRAM_BOT_TOKEN),'Telegram Polling':config.TELEGRAM_BOT_TOKEN?'NOT_CONFIGURED':'NOT_CONFIGURED',Brave:configured(config.BRAVE_SEARCH_API_KEY)?'CONFIGURED':'NOT_CONFIGURED','Google Places':configured(config.GOOGLE_MAPS_API_KEY)?'CONFIGURED':'NOT_CONFIGURED',OpenAI:configured(config.OPENAI_API_KEY)?'CONFIGURED':'NOT_CONFIGURED',Gmail:configured(config.GOOGLE_REFRESH_TOKEN)?'CONFIGURED':'NOT_CONFIGURED',Sheets:configured(config.GOOGLE_SHEET_ID)?'CONFIGURED':'NOT_CONFIGURED',Playwright:'ERROR'};
+  if(pool&&configured(config.DATABASE_URL))try{await pool.query('SELECT 1');checks.Postgres='PASS';const result=await pool.query<{key:string;value:string}>('SELECT key,value FROM configuration WHERE key = ANY($1)',[['WORKER_HEARTBEAT','SCHEDULER_HEARTBEAT','TELEGRAM_POLLING_ACTIVE','TELEGRAM_POLLING_HEARTBEAT']]);const values=Object.fromEntries(result.rows.map(row=>[row.key,row.value]));const recent=(value?:string)=>Boolean(value&&Date.now()-Date.parse(value)<120000);checks.Worker=recent(values.WORKER_HEARTBEAT)?'PASS':'ERROR';checks.Scheduler=recent(values.SCHEDULER_HEARTBEAT)?'PASS':'ERROR';checks['Telegram Polling']=values.TELEGRAM_POLLING_ACTIVE==='true'&&recent(values.TELEGRAM_POLLING_HEARTBEAT)?'PASS':'ERROR'}catch{checks.Postgres='ERROR'}
+  try{const browser=await chromium.launch({headless:true});await browser.close();checks.Playwright='PASS'}catch{checks.Playwright='ERROR'}
+  const configuredIntegrations=Object.values(checks).filter(status=>status==='PASS'||status==='CONFIGURED').length;const externalIntegrationsValidated=Object.entries(checks).filter(([name,status])=>!['Playwright','Postgres','Worker','Scheduler'].includes(name)&&status==='PASS').length;return{checks,configuredIntegrations,externalIntegrationsValidated}
+}
+export async function smoke(config:Config,pool?:Pool):Promise<HealthReport>{
+  const report=await doctor(config,pool);const checks={...report.checks};
+  if(config.BRAVE_SEARCH_API_KEY){const url=new URL('https://api.search.brave.com/res/v1/web/search');url.searchParams.set('q','transporte refrigerado CABA');const status=await probe(url.toString(),{headers:{Accept:'application/json','X-Subscription-Token':config.BRAVE_SEARCH_API_KEY}});checks.Brave=status}
+  if(config.GOOGLE_MAPS_API_KEY)checks['Google Places']=await probe('https://places.googleapis.com/v1/places:searchText',{method:'POST',headers:{'Content-Type':'application/json','X-Goog-Api-Key':config.GOOGLE_MAPS_API_KEY,'X-Goog-FieldMask':'places.id'},body:JSON.stringify({textQuery:'transporte refrigerado CABA',languageCode:'es',regionCode:'AR'})});
+  if(config.OPENAI_API_KEY)checks.OpenAI=await probe('https://api.openai.com/v1/models',{headers:{Authorization:`Bearer ${config.OPENAI_API_KEY}`}});
+  if(config.GOOGLE_CLIENT_ID&&config.GOOGLE_CLIENT_SECRET&&config.GOOGLE_REFRESH_TOKEN){try{const auth=new google.auth.OAuth2(config.GOOGLE_CLIENT_ID,config.GOOGLE_CLIENT_SECRET);auth.setCredentials({refresh_token:config.GOOGLE_REFRESH_TOKEN});await google.gmail({version:'v1',auth}).users.getProfile({userId:'me'});checks.Gmail='PASS';if(config.GOOGLE_SHEET_ID){await google.sheets({version:'v4',auth}).spreadsheets.get({spreadsheetId:config.GOOGLE_SHEET_ID,fields:'spreadsheetId'});checks.Sheets='PASS'}}catch{if(checks.Gmail==='CONFIGURED')checks.Gmail='ERROR';if(checks.Sheets==='CONFIGURED')checks.Sheets='ERROR'}}
+  return{checks,configuredIntegrations:Object.values(checks).filter(status=>status==='PASS'||status==='CONFIGURED').length,externalIntegrationsValidated:Object.entries(checks).filter(([name,status])=>!['Playwright','Postgres','Worker','Scheduler'].includes(name)&&status==='PASS').length}
+}
