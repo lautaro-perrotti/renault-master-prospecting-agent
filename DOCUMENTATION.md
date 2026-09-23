@@ -65,3 +65,27 @@ No se usa `PASS` para una integraciÃ³n que solo compila. Los estados se separa
 - Se agregaron parsers puros para Brave y Google Places y smoke scripts condicionales.
 - Telegram quedÃ³ fuera del alcance de esta iteraciÃ³n.
 - ValidaciÃ³n de esta iteraciÃ³n: lint, typecheck y suite Vitest pasan; los smoke reales dependen de sus respectivas credenciales.
+
+## Validacion real de discovery - 2026-09-23
+
+- Smoke real: Brave, Google Places y OpenAI respondieron correctamente. OpenAI uso `gpt-5.6-luna` en el smoke estructurado.
+- Corrida limitada: 2 requests de busqueda, 40 resultados raw, 35 candidatos de entidad, 5 companias resueltas, 5 crawls y 5 investigaciones exitosas.
+- Ultimo reporte: `reports/live-discovery-2026-09-23T21-56-00-904Z.json` y su Markdown asociado.
+- OpenAI: 5 llamadas, 4 a `gpt-5.6-luna` y 1 escalada a `gpt-5.6-terra` por referencia de evidencia invalida; total 21.218 tokens reportados por la API.
+- Costo: no estimado porque no hay precios configurados en el proyecto.
+- `OUTREACH_ENABLED=false`; no se envio ningun mensaje.
+
+## Defectos encontrados y corregidos con datos reales
+
+- La unicidad global de resultados raw impedia conservar lineage por corrida; ahora la clave incluye `run_id`.
+- El indice de evidencia sobre el texto completo superaba el limite de B-tree de PostgreSQL; ahora la deduplicacion usa `md5(excerpt)`.
+- Una pagina de Cloudflare habia sido interpretada como telefono; se agrego limpieza reproducible y el extractor rechaza IPv4 y longitudes invalidas.
+- Emails concatenados con etiquetas de la pagina se normalizan solo para TLDs conocidos; no se inventan direcciones.
+- Una referencia de evidencia inexistente provoca escalada a Terra y, si falla nuevamente, error explicito.
+- El crawler elimina scripts y estilos antes de persistir evidencia.
+
+## Gate de calidad
+
+- Providers y pipeline: `REAL_API_VALIDATED`.
+- Calidad comercial: `DISCOVERY_REAL_BUT_NEEDS_TUNING`; el lote esta dominado por operadores logisticos y solo una de cinco empresas muestra evidencia explicita de cadena de frio. Las demas quedan para revision humana como posibles socios o capacidad complementaria.
+- Telegram, Gmail, Sheets, OAuth y Docker quedaron fuera de esta iteracion.

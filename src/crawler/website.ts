@@ -15,7 +15,7 @@ export class WebsiteCrawler{
       while(queue.length&&pages.length<this.config.MAX_PAGES_PER_DOMAIN){
         const candidate=queue.shift()!;if(seen.has(candidate))continue;seen.add(candidate);
         try{
-          const response=await fetch(candidate,{redirect:'follow',signal:AbortSignal.timeout(10000)});const html=await response.text();const $=cheerio.load(html);const text=$('body').text().replace(/\s+/g,' ').trim();
+          const response=await fetch(candidate,{redirect:'follow',signal:AbortSignal.timeout(10000)});const html=await response.text();const $=cheerio.load(html);$('script,style,noscript,template').remove();const text=$('body').text().replace(/\s+/g,' ').trim();
           const links=[...new Set($('a[href]').map((_,el)=>{try{const href=$(el).attr('href');return href?new URL(href,root).href:undefined}catch{return undefined}}).get().filter((url):url is string=>Boolean(url&&new URL(url).hostname===root.hostname)))];
           const signal=signals(text);pages.push({url:response.url||candidate,title:$('title').text().trim()||candidate,text,status:response.status,sourceType:'HTTP',links,contactSignals:signal.contactSignals,businessSignals:signal.businessSignals,observedAt:new Date().toISOString()});
           for(const link of links.sort((a,b)=>scoreLink(b)-scoreLink(a)))if(!seen.has(link))queue.push(link);
