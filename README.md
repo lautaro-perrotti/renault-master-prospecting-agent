@@ -1,30 +1,30 @@
 # Renault Master Prospecting Agent
 
-Agente comercial para encontrar oportunidades de transporte refrigerado para una Renault Master en CABA, GBA y AMBA. PostgreSQL es la fuente de verdad, Telegram es el centro operativo y Sheets es una proyección.
+Agente comercial para detectar oportunidades de transporte para una Renault Master en CABA, GBA y AMBA. El modelo cubre cargas secas, refrigeradas y mixtas; la refrigeración es una capacidad adicional. PostgreSQL es la fuente de verdad, Telegram es el centro operativo y Sheets es una proyección.
 
 ## Estado verificable
 
 El runtime actual tiene conectados:
 
-- discovery con resultados crudos, clasificación, candidatos de entidad y resolución por dominio/nombre;
-- planning bootstrap y estrategias derivadas con límite de requests, tiempo y compañías;
+- discovery con resultados crudos, clasificaciÃ³n, candidatos de entidad y resoluciÃ³n por dominio/nombre;
+- planning bootstrap y estrategias derivadas con lÃ­mite de requests, tiempo y compaÃ±Ã­as;
 - crawler HTTP que descubre enlaces internos y usa Playwright solo como fallback;
 - contactos y evidencia con provenance;
-- research estructurado con OpenAI cuando hay credencial y fallback determinista explícito cuando no la hay;
+- research estructurado con OpenAI cuando hay credencial y fallback determinista explÃ­cito cuando no la hay;
 - qualification basada en evidencia y recency observada;
-- drafting idempotente por campaña y step;
-- policy de modo, supresión, estado operativo y reserva transaccional de límites;
+- drafting idempotente por campaÃ±a y step;
+- policy de modo, supresiÃ³n, estado operativo y reserva transaccional de lÃ­mites;
 - delivery con estados `READY`, `PREPARED`, `SENDING`, `SENT`, `RECONCILING` y `FAILED`;
 - reply polling, follow-ups idempotentes y notificaciones Telegram;
 - projection de seis tabs de Google Sheets;
 - job worker con `SKIP LOCKED`, leases, heartbeat y retry/DEAD;
 - scheduler persistente por slots y Docker Compose con Postgres, app, worker y scheduler.
 
-La matriz histórica de la auditoría está en [AUDIT.md](AUDIT.md). Las capabilities que todavía requieren validación externa aparecen como `CONFIGURED`, `NOT_CONFIGURED` o `ERROR`; compilar no se considera validación.
+La matriz histÃ³rica de la auditorÃ­a estÃ¡ en [AUDIT.md](AUDIT.md). Las capabilities que todavÃ­a requieren validaciÃ³n externa aparecen como `CONFIGURED`, `NOT_CONFIGURED` o `ERROR`; compilar no se considera validaciÃ³n.
 
-## Instalación local
+## InstalaciÃ³n local
 
-Requiere Node.js 22+, Docker y PostgreSQL. Para una instalación limpia:
+Requiere Node.js 22+, Docker y PostgreSQL. Para una instalaciÃ³n limpia:
 
 ```text
 npm install
@@ -52,33 +52,37 @@ O levantar el runtime completo:
 docker compose up --build
 ```
 
-Postgres tiene healthcheck y los procesos dependientes esperan a que esté healthy. No ejecutes una segunda instancia de `npm run dev`: el proceso de app mantiene el puerto configurado y el polling de Telegram.
+Postgres tiene healthcheck y los procesos dependientes esperan a que estÃ© healthy. No ejecutes una segunda instancia de `npm run dev`: el proceso de app mantiene el puerto configurado y el polling de Telegram.
 
-## Configuración
+## ConfiguraciÃ³n
 
 Copiar `.env.example` a `.env`. Las credenciales permanecen fuera de git.
 
 - `OUTREACH_MODE=MANUAL|SEMI_AUTO|AUTO` controla el policy engine.
-- `OUTREACH_ENABLED=false` es el valor seguro inicial. Para habilitar delivery real hay que ponerlo explícitamente en `true`.
-- `AUTO` requiere `OUTREACH_ENABLED=true`, score mínimo, contacto válido, ausencia de supresión, estado operativo `RUNNING` y un slot disponible.
+- `OUTREACH_ENABLED=false` es el valor seguro inicial. Para habilitar delivery real hay que ponerlo explÃ­citamente en `true`.
+- `AUTO` requiere `OUTREACH_ENABLED=true`, score mÃ­nimo, contacto vÃ¡lido, ausencia de supresiÃ³n, estado operativo `RUNNING` y un slot disponible.
 - `TELEGRAM_ALLOWED_USER_IDS` restringe comandos y callbacks.
-- `BRAVE_SEARCH_API_KEY` y `GOOGLE_MAPS_API_KEY` habilitan discovery.
-- `OPENAI_API_KEY` habilita research y clasificación de replies con OpenAI; sin esa credencial el runtime informa el fallback determinista.
+- `BRAVE_SEARCH_API_KEY` y `GOOGLE_MAPS_API_KEY` habilitan discovery real. Brave clasifica resultados antes de crear empresas y Places conserva placeId, dirección, coordenadas, teléfono, web y URL de Maps.
+- `OPENAI_API_KEY` habilita research y clasificaciÃ³n de replies con OpenAI; sin esa credencial el runtime informa el fallback determinista.
 - Gmail y Sheets usan OAuth con `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REFRESH_TOKEN` y, para Sheets, `GOOGLE_SHEET_ID`.
 
 ## Telegram
 
-Comandos: `/start`, `/help`, `/status`, `/stats`, `/search`, `/discovery`, `/leads`, `/lead`, `/why`, `/research`, `/send`, `/skip`, `/block`, `/replies`, `/errors`, `/pause`, `/resume`, `/stop`, `/mode`, `/config` y `/doctor`.
+La pantalla principal de Telegram estÃ¡ pensada como un panel operativo en espaÃ±ol. `/start` y `/inicio` muestran botones para buscar oportunidades, revisar leads, ver respuestas, consultar el estado y abrir la configuraciÃ³n.
 
-Los comandos y botones usan el mismo `LeadActions`. `BLOCK` crea una suppression por empresa; una empresa bloqueada no se reactiva con rediscovery. `PAUSED` permite health, control, replies y Sheets, y bloquea discovery/outreach. `STOPPED` bloquea nuevos envíos y follow-ups.
+Los aliases principales son `/buscar`, `/oportunidades`, `/respuestas`, `/estado`, `/configuracion`, `/ayuda`, `/pausar` y `/reanudar`. Los comandos tÃ©cnicos (`/search`, `/leads`, `/lead`, `/why`, `/research`, `/send`, `/skip`, `/block`, `/mode`, `/doctor`, entre otros) se mantienen para compatibilidad y diagnÃ³stico.
+
+Las oportunidades se muestran con puntaje, ubicaciÃ³n, tipo de transporte traducido, evidencia resumida, contacto y estado humano. Las acciones de contacto, investigaciÃ³n, descarte y bloqueo usan botones inline y los mismos servicios de aplicaciÃ³n que los comandos.
+
+Los comandos y botones usan el mismo `LeadActions`. `BLOCK` crea una suppression por empresa; una empresa bloqueada no se reactiva con rediscovery. `PAUSED` permite health, control, replies y Sheets, y bloquea discovery/outreach. `STOPPED` bloquea nuevos envÃ­os y follow-ups.
 
 ## Migraciones y datos
 
-Las migraciones se registran en `migration_history` y se ejecutan una sola vez por versión. Las tablas de lineage (`runs`, `search_queries`, `raw_search_results`, `entity_candidates`, `sources`, `evidence`, `research_results`) permiten reconstruir `/why <id>`.
+Las migraciones se registran en `migration_history` y se ejecutan una sola vez por versiÃ³n. Las tablas de lineage (`runs`, `search_queries`, `raw_search_results`, `entity_candidates`, `sources`, `evidence`, `research_results`) permiten reconstruir `/why <id>`.
 
-El job queue acepta claves de idempotencia. Los envíos tienen un `messageId` lógico estable, una sequence única por compañía/campaña y un step único por sequence.
+El job queue acepta claves de idempotencia. Los envÃ­os tienen un `messageId` lÃ³gico estable, una sequence Ãºnica por compaÃ±Ã­a/campaÃ±a y un step Ãºnico por sequence.
 
-## Validación
+## ValidaciÃ³n
 
 ```text
 npm run lint
@@ -97,12 +101,16 @@ $env:RUN_PG_INTEGRATION='1'
 npm test
 ```
 
-La suite incluye unit tests, integración PostgreSQL, safety tests y un pipeline e2e con providers fake y PostgreSQL real que demuestra discovery, crawler, research con referencias de evidencia, qualification `AUTO_ELIGIBLE`, draft único, exactamente un send, reply, notification y Sheets projection.
+La suite incluye unit tests, integraciÃ³n PostgreSQL, safety tests y un pipeline e2e con providers fake y PostgreSQL real que demuestra discovery, crawler, research con referencias de evidencia, qualification `AUTO_ELIGIBLE`, draft Ãºnico, exactamente un send, reply, notification y Sheets projection.
 
-`npm run doctor` comprueba configuración y probes básicos. `npm run smoke` ejecuta requests reales para las APIs configuradas. `NOT_CONFIGURED` no se presenta como PASS.
+`npm run doctor` comprueba configuraciÃ³n y probes bÃ¡sicos. `npm run smoke` ejecuta requests reales para las APIs configuradas. También existen `npm run smoke:brave`, `npm run smoke:places` y `npm run smoke:openai`; cada uno devuelve `NOT_CONFIGURED`, `REAL_API_VALIDATED` o `ERROR` sin mostrar secretos. `NOT_CONFIGURED` no se presenta como PASS.
 
 ## Limitaciones conocidas
 
-- El reconciliador Gmail para un timeout después de aceptación externa todavía debe consultar y resolver explícitamente mensajes en estado `RECONCILING` antes de permitir otro intento.
-- La proyección Sheets crea y actualiza filas con `internal_id`; la creación automática de tabs que no existan depende de permisos y metadata de la cuenta.
-- La estrategia adaptativa aprende vocabulario de resultados del run actual; todavía no agrega feedback histórico de campañas rechazadas al planner.
+- El reconciliador Gmail para un timeout despuÃ©s de aceptaciÃ³n externa todavÃ­a debe consultar y resolver explÃ­citamente mensajes en estado `RECONCILING` antes de permitir otro intento.
+- La proyecciÃ³n Sheets crea y actualiza filas con `internal_id`; la creaciÃ³n automÃ¡tica de tabs que no existan depende de permisos y metadata de la cuenta.
+- La estrategia adaptativa aprende vocabulario de resultados del run actual; todavÃ­a no agrega feedback histÃ³rico de campaÃ±as rechazadas al planner.
+
+## Discovery real
+
+Para validar proveedores sin mostrar credenciales, completar en `.env` `BRAVE_SEARCH_API_KEY`, `GOOGLE_MAPS_API_KEY` y `OPENAI_API_KEY` según corresponda. Luego ejecutar `npm run smoke:brave`, `npm run smoke:places` y `npm run smoke:openai`. El experimento limitado se ejecuta con `npm run discovery:live -- --query "empresas con distribución propia en AMBA" --max-searches 5`; genera reportes JSON y Markdown en `reports/`. `OUTREACH_ENABLED=false` debe permanecer activo.
