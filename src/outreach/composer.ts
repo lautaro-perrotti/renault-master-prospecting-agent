@@ -1,1 +1,11 @@
-import type {Config} from '../config.js'; export type ServiceProfile={vehicle:string;temperatureCapability:string;baseLocation:string;coverage:string[];availability:string;cargoTypes:string[];certifications:string[];documentation:string[];contactPerson:string;phone:string;videoUrl:string}; export function composeEmail(company:string,email:string,evidence:string[],profile:ServiceProfile,config:Config){if(!email||!evidence.length)throw new Error('Cannot draft without verified contact and evidence');return{to:email,subject:`SoluciÃ³n de transporte para ${company}`,body:`Hola, ${company}.\n\nVimos pÃºblicamente: ${evidence[0]}\n\nOfrecemos ${profile.vehicle} para distribuciÃ³n y entregas en ${profile.coverage.join(', ')}${profile.temperatureCapability?`, con capacidad ${profile.temperatureCapability} cuando hace falta`:''}. Â¿Podemos conversar sobre sus recorridos?\n\nSaludos,\n${profile.contactPerson||config.SENDER_NAME}`}}
+import type {Config} from '../config.js';
+import {renderTransportIntroV1,TRANSPORT_INTRO_TEMPLATE} from './templates/transport-intro-v1.js';
+
+export type ServiceProfile={vehicle:string;temperatureCapability:string;baseLocation:string;coverage:string[];availability:string;cargoTypes:string[];certifications:string[];documentation:string[];contactPerson:string;phone:string;videoUrl:string};
+
+export function composeEmail(company:string,email:string,evidence:string[],profile:ServiceProfile,config:Config){
+  if(config.EMAIL_TEMPLATE!==TRANSPORT_INTRO_TEMPLATE)throw new Error(`UNSUPPORTED_EMAIL_TEMPLATE:${config.EMAIL_TEMPLATE}`);
+  const evidenceExcerpt=evidence.find(item=>item.trim())?.trim();
+  if(!email||!evidenceExcerpt)throw new Error('Cannot draft without verified contact and evidence');
+  return renderTransportIntroV1({companyName:company,recipientEmail:email,evidenceExcerpt,vehicle:profile.vehicle,temperatureCapability:profile.temperatureCapability,coverage:profile.coverage,senderName:profile.contactPerson||config.SENDER_NAME,senderPhone:profile.phone});
+}

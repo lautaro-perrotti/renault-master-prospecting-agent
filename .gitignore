@@ -6,3 +6,5 @@ coverage/
 *.db
 *.sqlite
 reports/
+*.zip
+*.bundle

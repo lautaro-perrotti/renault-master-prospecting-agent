@@ -123,3 +123,22 @@ Gitt conserva prioridad por evidencia explícita de incorporación de personas c
 - El reporte conserva un error explícito para XPallet.com Argentina porque el crawl no dejó evidencia persistida suficiente para investigar. No se convirtió en éxito falso.
 
 El gate de esta iteración es `TARGETING_NEEDS_TUNING`: la cobertura GOOD+MAYBE supera el objetivo inicial, pero GOOD todavía está por debajo de 40%. No se activó outreach ni se enviaron mensajes.
+
+## Gmail y plantilla inicial - 2026-09-23
+
+- El flujo de `DRAFT` usa la plantilla local versionada `transport-intro-v1`.
+- La plantilla exige email v?lido, raz?n social, evidencia persistida, veh?culo, cobertura y remitente.
+- Subject y body se generan de forma determinista y se persisten en `messages` con idempotencia por campa?a y step.
+- La plantilla contempla transporte seco, refrigerado o mixto sin afirmar necesidades no verificadas.
+- `OUTREACH_ENABLED=false` permanece activo. Esta iteraci?n no ejecut? Gmail ni envi? mensajes.
+- La validaci?n OAuth/Gmail real queda para el siguiente paso cuando se configuren credenciales.
+
+## Gmail: validacion de cuenta y drafts - 2026-09-23
+
+- Se agrego `npm run gmail:check`, que ejecuta un request real `users.getProfile` cuando estan configuradas las tres credenciales OAuth y devuelve `REAL_API_VALIDATED`, `NOT_CONFIGURED` o `ERROR`.
+- Se agrego `npm run gmail:draft -- --message-id <id>`, una operacion manual que llama `users.drafts.create` para el mensaje exacto persistido.
+- La tabla `messages` guarda `gmail_draft_id` y `gmail_draft_message_id`, con indices unicos parciales en la migracion `0017_gmail_drafts.sql`.
+- El draft conserva el `messageId` logico mediante `X-Renault-Idempotency-Key`; no cambia el estado a `SENT` y no se conecta al worker automatico.
+- El handler vuelve a consultar suppression, exige destinatario/cuerpo persistidos y registra auditoria de creacion, repeticion o fallo.
+- La prueba de Gmail disponible en esta etapa es MIME/unitaria. La cuenta solo se declara validada despues de ejecutar `npm run gmail:check` con OAuth real.
+- Se agrego `npm run gmail:oauth` con scope exclusivo de Gmail (`gmail.modify`) para obtener el refresh token sin pedir permisos de Sheets.

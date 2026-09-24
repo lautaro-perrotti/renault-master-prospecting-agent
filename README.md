@@ -114,3 +114,33 @@ La suite incluye unit tests, integraciÃ³n PostgreSQL, safety tests y un pipeli
 ## Discovery real
 
 Para validar proveedores sin mostrar credenciales, completar en `.env` `BRAVE_SEARCH_API_KEY`, `GOOGLE_MAPS_API_KEY` y `OPENAI_API_KEY` según corresponda. Luego ejecutar `npm run smoke:brave`, `npm run smoke:places` y `npm run smoke:openai`. El experimento limitado se ejecuta con `npm run discovery:live -- --query "empresas con distribución propia en AMBA" --max-searches 5`; genera reportes JSON y Markdown en `reports/`. `OUTREACH_ENABLED=false` debe permanecer activo.
+
+## Plantilla inicial de email
+
+`EMAIL_TEMPLATE=transport-intro-v1` selecciona la plantilla local inicial para los drafts de outreach. Personaliza raz?n social, una evidencia p?blica persistida, cobertura CABA/GBA, capacidad del veh?culo y remitente. `OUTREACH_ENABLED=false` sigue bloqueando cualquier env?o.
+
+## Gmail: validacion y drafts manuales
+
+Gmail requiere `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` y `GOOGLE_REFRESH_TOKEN`. La validacion real de la cuenta se ejecuta de forma independiente:
+
+```text
+npm run gmail:check
+```
+
+El comando realiza `users.getProfile` y solo informa `REAL_API_VALIDATED` si Gmail devuelve una cuenta. Para crear un borrador en Gmail se necesita el `messageId` logico persistido por el sistema:
+
+```text
+npm run gmail:draft -- --message-id <messageId>
+```
+
+El comando crea un draft en Gmail, guarda su `gmail_draft_id` y conserva el estado de outreach sin marcar el mensaje como enviado. Repetirlo para el mismo `messageId` devuelve el draft ya persistido. La operacion respeta suppression, requiere destinatario y cuerpo persistidos, y registra `GMAIL_DRAFT_CREATED`, `GMAIL_DRAFT_ALREADY_EXISTS` o `GMAIL_DRAFT_FAILED`.
+
+No existe un comando de envio en esta iteracion. `OUTREACH_ENABLED=false` permanece activo y la creacion de drafts no habilita el envio automatico.
+
+Para vincular Gmail de forma interactiva, configurar primero `GOOGLE_CLIENT_ID` y `GOOGLE_CLIENT_SECRET` y ejecutar:
+
+```text
+npm run gmail:oauth
+```
+
+El flujo solicita el consentimiento de Gmail y muestra el refresh token una sola vez. Guardarlo en `.env` como `GOOGLE_REFRESH_TOKEN`; no copiarlo al repositorio ni a los reportes.
