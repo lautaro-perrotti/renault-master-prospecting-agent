@@ -7,5 +7,5 @@ export function composeEmail(company:string,email:string,evidence:string[],profi
   if(config.EMAIL_TEMPLATE!==TRANSPORT_INTRO_TEMPLATE)throw new Error(`UNSUPPORTED_EMAIL_TEMPLATE:${config.EMAIL_TEMPLATE}`);
   const evidenceExcerpt=evidence.find(item=>item.trim())?.trim();
   if(!email||!evidenceExcerpt)throw new Error('Cannot draft without verified contact and evidence');
-  return renderTransportIntroV1({companyName:company,recipientEmail:email,evidenceExcerpt,vehicle:profile.vehicle,temperatureCapability:profile.temperatureCapability,coverage:profile.coverage,senderName:profile.contactPerson||config.SENDER_NAME,senderPhone:profile.phone});
+  return renderTransportIntroV1({companyName:company,recipientEmail:email,evidenceExcerpt,vehicle:profile.vehicle,temperatureCapability:profile.temperatureCapability,coverage:profile.coverage,senderName:profile.contactPerson||config.SENDER_NAME,senderPhone:profile.phone||config.SENDER_PHONE,senderEmail:config.SENDER_EMAIL});
 }

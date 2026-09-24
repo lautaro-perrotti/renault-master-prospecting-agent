@@ -144,3 +144,5 @@ npm run gmail:oauth
 ```
 
 El flujo solicita el consentimiento de Gmail y muestra el refresh token una sola vez. Guardarlo en `.env` como `GOOGLE_REFRESH_TOKEN`; no copiarlo al repositorio ni a los reportes.
+
+La identidad del remitente configurada para los drafts es `R&M hnos. logistica`, `rymhermanos.logistica@gmail.com` y `1160397716`. Estos valores se usan únicamente en la firma del mensaje; el destinatario siempre debe provenir de un contacto prospectado persistido.

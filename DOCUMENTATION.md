@@ -142,3 +142,9 @@ El gate de esta iteración es `TARGETING_NEEDS_TUNING`: la cobertura GOOD+MAYBE 
 - El handler vuelve a consultar suppression, exige destinatario/cuerpo persistidos y registra auditoria de creacion, repeticion o fallo.
 - La prueba de Gmail disponible en esta etapa es MIME/unitaria. La cuenta solo se declara validada despues de ejecutar `npm run gmail:check` con OAuth real.
 - Se agrego `npm run gmail:oauth` con scope exclusivo de Gmail (`gmail.modify`) para obtener el refresh token sin pedir permisos de Sheets.
+
+## Identidad del remitente - 2026-09-23
+
+- Se configuraron `SENDER_NAME`, `SENDER_EMAIL` y `SENDER_PHONE` para R&M hnos. logistica.
+- La plantilla agrega esos datos a la firma del draft.
+- El correo remitente real lo determina la cuenta autenticada en Gmail; `SENDER_EMAIL` no reemplaza la validacion OAuth.

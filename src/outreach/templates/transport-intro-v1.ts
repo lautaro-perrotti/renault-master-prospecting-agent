@@ -10,7 +10,8 @@ const TemplateInput=z.object({
   temperatureCapability:z.string().trim().optional().default(''),
   coverage:z.array(z.string().trim().min(1)).min(1),
   senderName:z.string().trim().min(1),
-  senderPhone:z.string().trim().optional().default('')
+  senderPhone:z.string().trim().optional().default(''),
+  senderEmail:z.string().email().optional()
 });
 
 export type TransportIntroTemplateInput=z.input<typeof TemplateInput>;
@@ -20,6 +21,7 @@ export function renderTransportIntroV1(input:TransportIntroTemplateInput){
   const coverage=data.coverage.join(', ');
   const capability=data.temperatureCapability?` Podemos trabajar con capacidad ${data.temperatureCapability}.`:'';
   const phone=data.senderPhone?`\n${data.senderPhone}`:'';
+  const email=data.senderEmail?`\n${data.senderEmail}`:'';
   return{
     templateKey:TRANSPORT_INTRO_TEMPLATE,
     to:data.recipientEmail,
@@ -35,7 +37,7 @@ export function renderTransportIntroV1(input:TransportIntroTemplateInput){
       '¿Les sirve conversar sobre recorridos, picos de demanda o entregas que hoy tercerizan?',
       '',
       'Saludos,',
-      `${data.senderName}${phone}`
+      `${data.senderName}${phone}${email}`
     ].join('\n')
   };
 }
