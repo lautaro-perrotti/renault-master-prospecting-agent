@@ -8,6 +8,7 @@ import {getSuppressionDecision} from '../../outreach/suppression.js';
 import {reserveSendSlots} from '../../outreach/reservation.js';
 import {effectiveMode} from '../runtime-config.js';
 import {getOperationalState} from '../../operations/state.js';
+import {validatePreparedMessage} from '../../outreach/preflight.js';
 import type {JobDependencies} from '../dependencies.js';
 
 function uncertain(error:unknown){const message=String(error);return /timeout|timed out|ECONNRESET|socket|5\d\d/i.test(message)}
@@ -15,7 +16,8 @@ export async function sendHandler(db:Db,config:Config,job:any,deps:JobDependenci
   if(!config.OUTREACH_ENABLED)throw new Error('OUTREACH_DISABLED');
   if(await getOperationalState(db)!=='RUNNING')throw new Error('SYSTEM_NOT_RUNNING');
   const messageId=String(job.payload.messageId??'');if(!messageId)throw new Error('SEND_REQUIRES_MESSAGE_ID');
-  const message=(await db.execute(sql`SELECT m.*,c.status AS company_status,c.domain,q.total,q.decision,ct.verification_status AS contact_verification_status,ct.invalid AS contact_invalid FROM messages m JOIN companies c ON c.id=m.company_id LEFT JOIN contacts ct ON ct.company_id=m.company_id AND lower(ct.email)=lower(m.to_email) LEFT JOIN LATERAL (SELECT total,decision FROM qualifications WHERE company_id=m.company_id ORDER BY created_at DESC LIMIT 1) q ON true WHERE m.id=${messageId}`)).rows[0] as any;if(!message)throw new Error('MESSAGE_NOT_FOUND');
+  const message=(await db.execute(sql`SELECT m.*,c.name AS company_name,c.status AS company_status,c.domain,q.total,q.decision,ct.verification_status AS contact_verification_status,ct.invalid AS contact_invalid FROM messages m JOIN companies c ON c.id=m.company_id LEFT JOIN contacts ct ON ct.company_id=m.company_id AND lower(ct.email)=lower(m.to_email) LEFT JOIN LATERAL (SELECT total,decision FROM qualifications WHERE company_id=m.company_id ORDER BY created_at DESC LIMIT 1) q ON true WHERE m.id=${messageId}`)).rows[0] as any;if(!message)throw new Error('MESSAGE_NOT_FOUND');
+  const preflightIssues=validatePreparedMessage({companyName:message.company_name,toEmail:message.to_email,subject:message.subject,body:message.body,htmlBody:message.html_body});if(preflightIssues.length)throw new Error(`MESSAGE_PREFLIGHT_FAILED:${preflightIssues.join(',')}`);
   if(message.outbound_state==='SENT')return message;if(['SENDING','RECONCILING'].includes(message.outbound_state))throw new Error('OUTBOUND_RECONCILIATION_REQUIRED');if(message.outbound_state==='CANCELLED')throw new Error('MESSAGE_CANCELLED');
   if(message.contact_invalid||!['DOMAIN_VALID','MX_VALID','DELIVERY_VALIDATED'].includes(String(message.contact_verification_status)))throw new Error('EMAIL_DOMAIN_NOT_VERIFIED');
   const mode=await effectiveMode(db,config);const approved=Boolean(job.payload.approvedBy);if(!canSend({mode,score:Number(message.total??0),autoThreshold:config.AUTO_SEND_THRESHOLD,reviewThreshold:config.REVIEW_THRESHOLD,approved,followUp:Boolean(job.payload.followUp)}))throw new Error('MANUAL_APPROVAL_REQUIRED');

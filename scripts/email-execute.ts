@@ -3,6 +3,7 @@ import {loadConfig} from '../src/config.js';
 import {closeDb,createDb} from '../src/db/client.js';
 import {migrate} from '../src/db/migrate.js';
 import {sendHandler} from '../src/jobs/handlers/send-handler.js';
+import {validatePreparedMessage} from '../src/outreach/preflight.js';
 import {sql} from 'drizzle-orm';
 
 const confirmed=process.argv.includes('--confirm-send');
@@ -11,8 +12,10 @@ const config=loadConfig();
 const client=createDb(config);
 try{
   await migrate(client.pool);
-  const result=await client.db.execute(sql`SELECT m.id,m.company_id,m.to_email,m.subject,m.outbound_state FROM messages m JOIN message_sequences ms ON ms.id=m.sequence_id JOIN campaigns ca ON ca.id=ms.campaign_id JOIN companies c ON c.id=m.company_id WHERE ca.name='DEFAULT_TRANSPORT_OUTREACH' AND m.direction='OUTBOUND' AND m.sequence_step='DAY_0' AND m.prepared_at IS NOT NULL AND m.outbound_state IN ('READY','DRAFT','FAILED') AND c.status NOT IN ('BLOCKED','STOPPED','DISCARDED') ORDER BY m.prepared_at,m.id`);
+  const result=await client.db.execute(sql`SELECT m.id,m.company_id,c.name AS company_name,m.to_email,m.subject,m.body,m.html_body,m.outbound_state FROM messages m JOIN message_sequences ms ON ms.id=m.sequence_id JOIN campaigns ca ON ca.id=ms.campaign_id JOIN companies c ON c.id=m.company_id WHERE ca.name='DEFAULT_TRANSPORT_OUTREACH' AND m.direction='OUTBOUND' AND m.sequence_step='DAY_0' AND m.prepared_at IS NOT NULL AND m.outbound_state IN ('READY','DRAFT','FAILED') AND c.status NOT IN ('BLOCKED','STOPPED','DISCARDED') ORDER BY m.prepared_at,m.id`);
   const messages=result.rows as any[];
+  const preflight=messages.map(message=>({message,issues:validatePreparedMessage({companyName:message.company_name,toEmail:message.to_email,subject:message.subject,body:message.body,htmlBody:message.html_body})})).filter(item=>item.issues.length);
+  if(preflight.length){console.error(JSON.stringify({error:'EMAIL_PREFLIGHT_FAILED',invalidMessages:preflight.map(item=>({messageId:item.message.id,company:item.message.company_name,to:item.message.to_email,issues:item.issues}))},null,2));throw new Error('EMAIL_PREFLIGHT_FAILED')}
   const cold=messages.filter(message=>String(message.subject).startsWith('Contacto comercial | Transporte refrigerado y congelado')).length;
   const general=messages.length-cold;
   if(!confirmed){console.log(JSON.stringify({mode:'DRY_RUN',prepared:messages.length,sendableBySegment:{COLD_CHAIN:cold,GENERAL:general},message:'No se envió ningún correo. Usar --confirm-send solo con autorización explícita.'},null,2));process.exit(0)}
