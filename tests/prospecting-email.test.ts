@@ -1,5 +1,5 @@
 import {describe,expect,it} from 'vitest';
-import {DEFAULT_WHATSAPP_URL,renderProspectingEmailHtml,renderProspectingEmailText} from '../src/outreach/templates/prospecting-email.js';
+import {DEFAULT_WHATSAPP_URL,renderProspectingEmail,renderProspectingEmailHtml,renderProspectingEmailText} from '../src/outreach/templates/prospecting-email.js';
 
 const base={companyName:'Empresa <Prueba>',recipientGreeting:'equipo de Empresa <Prueba>',personalizedEvidence:'Vi que trabajan con distribuci\u00f3n en CABA.',senderName:'R&M hermanos',senderEmail:'rymhermanos.logistica@gmail.com',senderPhone:'1160397716'};
 
@@ -10,5 +10,6 @@ describe('prospecting HTML email template',()=>{
   it('links the sender phone and header to WhatsApp and the website',()=>{const html=renderProspectingEmailHtml(base);expect(html).toContain('>1160397716</a>');expect(html).toContain('<a href="https://rymhermanos.com.ar" target="_blank" style="display:inline-block;color:#08254A;text-decoration:none;"><div');expect(html).toContain('https://rymhermanos.com.ar');expect(html).not.toContain('&#x20;')});
   it('renders equivalent plain text without undefined, forms or tracking pixels',()=>{const text=renderProspectingEmailText({...base,showRefrigerationCapability:true});expect(text).toContain('Vi que trabajan con distribuci\u00f3n en CABA.');expect(text).toContain('transportar productos refrigerados y congelados');expect(text).not.toMatch(/undefined|null|<form|<script|tracking|pixel/i)});
   it('emphasizes an exclusive unit and flexible duration',()=>{const html=renderProspectingEmailHtml(base);const text=renderProspectingEmailText(base);for(const value of ['unidad de uso exclusivo','carga seca','refrigerada','congelada','permanente o por hora','choferes capacitados','recorridos extensos','entregas y cobranzas','tratar directamente con sus clientes','servicio personalizado']){expect(`${html}${text}`).toContain(value)}expect(html).toContain('Unidad exclusiva');expect(html).toContain('Permanente o por hora')});
+  it('uses separate subjects for general and cold-chain opportunities',()=>{expect(renderProspectingEmail(base).subject).toBe('Una unidad exclusiva para la distribución de Empresa <Prueba>');expect(renderProspectingEmail({...base,showRefrigerationCapability:true}).subject).toBe('Transporte refrigerado y congelado para Empresa <Prueba>')});
   it('supports a configured logo URL',()=>{const html=renderProspectingEmailHtml({...base,logoUrl:'https://example.com/logo.png'});expect(html).toContain('src="https://example.com/logo.png"');expect(html).toContain('alt="R&amp;M hermanos"')});
 });
