@@ -6,7 +6,7 @@ export type ServiceProfile={vehicle:string;temperatureCapability:string;baseLoca
 export function emailEvidence(excerpts:string[]){
   const raw=excerpts.find(item=>item.trim())?.trim();
   if(!raw)throw new Error('Cannot draft without verified contact and evidence');
-  if(/p[aá]gina\s+(?:p[uú]blica|publica).*contacto|contacto.*p[aá]gina|mailto:|[\w.+-]+@[\w.-]+\.[a-z]{2,}/i.test(raw))return'Vi que realizan distribución y reparto para empresas en CABA y GBA.';
+  if(raw.length>240||/p[aá]gina\s+(?:p[uú]blica|publica).*contacto|contacto.*p[aá]gina|mailto:|[\w.+-]+@[\w.-]+\.[a-z]{2,}|\b(?:nosotros|productos|proveedores|menu|menú|inicio|categor[ií]as|rastreo|mi carrito|haga su pedido|burakko|donde estamos)\b/i.test(raw))return'Vi que realizan distribución y reparto para empresas en CABA y GBA.';
   return raw;
 }
 
