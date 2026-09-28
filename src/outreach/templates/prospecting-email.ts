@@ -37,7 +37,7 @@ function renderFooter(data:ParsedProspectingEmailTemplateData){return`<p style="
 
 export function renderProspectingEmailHtml(input:ProspectingEmailTemplateData){
   const data=TemplateDataSchema.parse(input);
-  const refrigeration=data.showRefrigerationCapability?`<p style="margin:20px 0 0;padding:12px 14px;border-left:3px solid #1E6BD6;background:#F6F8FB;color:#111827;font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:21px;">Tambi\u00e9n contamos con una unidad con capacidad para transportar productos refrigerados y congelados.</p>`:'';
+  const refrigeration=data.showRefrigerationCapability?`<p style="margin:20px 0 0;padding:12px 14px;border-left:3px solid #1E6BD6;background:#F6F8FB;color:#111827;font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:21px;">Contamos con una unidad con capacidad para transportar productos refrigerados y congelados.</p>`:'';
   const email=data.senderEmail?`<br><a href="mailto:${escapeHtml(data.senderEmail)}" style="color:#1E6BD6;text-decoration:underline;">${escapeHtml(data.senderEmail)}</a>`:'';
   const phone=data.senderPhone?`<br><a href="${safeUrl(data.whatsappUrl)}" target="_blank" style="color:#1E6BD6;text-decoration:underline;">${escapeHtml(data.senderPhone)}</a>`:'';
   const website=`<br><a href="${safeUrl(data.websiteUrl)}" target="_blank" style="color:#1E6BD6;text-decoration:underline;font-weight:700;">rymhermanos.com.ar</a>`;
@@ -47,7 +47,7 @@ export function renderProspectingEmailHtml(input:ProspectingEmailTemplateData){
 export function renderProspectingEmailText(input:ProspectingEmailTemplateData){
   const data=TemplateDataSchema.parse(input);
   const capabilities=data.capabilities.join(' | ');
-  const refrigeration=data.showRefrigerationCapability?'\nTambi\u00e9n contamos con una unidad con capacidad para transportar productos refrigerados y congelados.\n':'';
+  const refrigeration=data.showRefrigerationCapability?'\nContamos con una unidad con capacidad para transportar productos refrigerados y congelados.\n':'';
   const signature=[data.senderName,'Soluciones que mueven tu empresa',data.senderPhone,data.senderEmail,data.websiteUrl,'CABA y GBA'].filter(Boolean).join('\n');
   return[`Hola ${data.recipientGreeting},`,'',data.personalizedEvidence,'',`Desde R&M hermanos brindamos servicios de distribuci\u00f3n y reparto para empresas en ${data.coverageDescription}, con una flota de ${data.fleetDescription}.`,data.valueProposition,data.driverServiceDescription,'',capabilities,refrigeration,data.ctaQuestion,'',`Consultar disponibilidad: ${data.whatsappUrl}`,'','O simplemente respond\u00e9 este correo y seguimos por ac\u00e1.','',`Saludos,\n${signature}`,'',`Este mensaje fue enviado porque encontramos informaci\u00f3n p\u00fablica de contacto de ${data.companyName} y consideramos que nuestros servicios podr\u00edan ser relevantes para su operaci\u00f3n.`,'Si prefer\u00eds no recibir nuevos mensajes de nuestra parte, respond\u00e9 indicando "No contactar".'].join('\n').replace(/\n{3,}/g,'\n\n')
 }
