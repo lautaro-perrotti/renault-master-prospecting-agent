@@ -14,7 +14,7 @@ export function normalizeEmail(value:string){
 }
 export function validEmail(value:string){return emailPattern.test(value.trim())}
 export function normalizePhone(value:string){return value.replace(/[^\d+]/g,'')}
-function validPhone(value:string){const trimmed=value.trim();if(/^\d{1,3}(\.\d{1,3}){3}$/.test(trimmed))return false;const digits=trimmed.replace(/\D/g,'');return digits.length>=8&&digits.length<=15}
+function validPhone(value:string){const trimmed=value.trim();if(/^\d{1,3}(\.\d{1,3}){3}$/.test(trimmed))return false;const digits=trimmed.replace(/\D/g,'');if(digits.length<8||digits.length>15)return false;if(/^(\d)\1+$/.test(digits))return false;if(digits.length===8&&/^(19|20)\d{6}$/.test(digits))return false;return true}
 function roleForEmail(email:string):ContactRole{const local=email.split('@')[0];if(/logistic|logistica|flete|transport/.test(local))return'LOGISTICS';if(/operacion|operations/.test(local))return'OPERATIONS';if(/compras|purchase|abastecimiento/.test(local))return'PURCHASING';if(/venta|ventas|sales|comercial/.test(local))return'SALES';if(/due[nñ]o|owner|gerencia|director/.test(local))return'OWNER';if(/info|contacto|administracion|admin/.test(local))return'GENERAL';return'UNKNOWN'}
 export function extractContacts(text:string,sourceUrl:string){
   const findings:ContactFinding[]=[];

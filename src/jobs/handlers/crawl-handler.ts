@@ -23,5 +23,5 @@ export async function crawlHandler(db:Db,config:Config,job:any,deps:JobDependenc
     for(const finding of extractContacts(page.text,page.url))if(finding.phone)await db.execute(sql`INSERT INTO contacts(company_id,phone,kind,role,source_url,verification_status,verified) VALUES(${companyId},${finding.phone},${finding.kind},${finding.role},${finding.sourceUrl},${finding.verificationStatus},false) ON CONFLICT DO NOTHING`);
   }
   await db.execute(sql`UPDATE companies SET status=CASE WHEN status IN ('BLOCKED','DISCARDED') THEN status ELSE 'RESEARCHING' END,updated_at=now() WHERE id=${companyId}`);
-  await enqueue(db,'RESEARCH',{companyId},new Date(),{idempotencyKey:`RESEARCH:${companyId}`});await audit(db,'CRAWL_COMPLETED',{pages:pages.length},companyId,job.id);
+  const recovery=job.payload.recovery==='CONTACT_RECOVERY';await enqueue(db,'RESEARCH',{companyId,recovery:recovery?'CONTACT_RECOVERY':undefined},new Date(),{idempotencyKey:recovery?`CONTACT_RECOVERY_RESEARCH:${companyId}`:`RESEARCH:${companyId}`});await audit(db,'CRAWL_COMPLETED',{pages:pages.length,recovery},companyId,job.id);
 }
