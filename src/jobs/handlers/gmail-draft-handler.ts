@@ -30,7 +30,7 @@ export async function gmailDraftHandler(db:Db,config:Config,job:any,deps:JobDepe
         return existing;
       }
     }
-    const result=await gmail.createDraft({to:message.to_email,subject:message.subject,body:message.body,threadId:message.gmail_thread_id??undefined,idempotencyKey:message.idempotency_key});
+    const result=await gmail.createDraft({to:message.to_email,subject:message.subject,body:message.body,htmlBody:message.html_body??undefined,threadId:message.gmail_thread_id??undefined,idempotencyKey:message.idempotency_key});
     if(!result.draftId)throw new Error('GMAIL_DRAFT_ID_MISSING');
     await db.execute(sql`UPDATE messages SET gmail_draft_id=${result.draftId},gmail_draft_message_id=${result.messageId??null},gmail_thread_id=COALESCE(${result.threadId??null},gmail_thread_id),failure_code=NULL WHERE id=${message.id} AND gmail_draft_id IS NULL`);
     await audit(db,'GMAIL_DRAFT_CREATED',{messageId:message.id,gmailDraftId:result.draftId,gmailMessageId:result.messageId??null},message.company_id,job.id);

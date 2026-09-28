@@ -24,7 +24,7 @@ export async function sendHandler(db:Db,config:Config,job:any,deps:JobDependenci
   await db.execute(sql`UPDATE messages SET outbound_state='SENDING' WHERE id=${message.id} AND outbound_state='PREPARED'`);
   const gmail=deps.gmail??new GmailClient(config);
   try{
-    const result=await gmail.send({to:message.to_email,subject:message.subject,body:message.body,threadId:message.gmail_thread_id??undefined,idempotencyKey:message.idempotency_key});
+    const result=await gmail.send({to:message.to_email,subject:message.subject,body:message.body,htmlBody:message.html_body??undefined,threadId:message.gmail_thread_id??undefined,idempotencyKey:message.idempotency_key});
     if(!result.messageId){await db.execute(sql`UPDATE messages SET outbound_state='RECONCILING',reconciliation_at=now() WHERE id=${message.id}`);return}
     await db.execute(sql`UPDATE messages SET gmail_message_id=${result.messageId},gmail_thread_id=${result.threadId??null},sent_at=now(),outbound_state='SENT' WHERE id=${message.id}`);
     await db.execute(sql`UPDATE message_sequences SET status='ACTIVE',next_step='DAY_3',next_run_at=now()+interval '3 days' WHERE id=${message.sequence_id}`);await db.execute(sql`UPDATE companies SET status='SENT',updated_at=now() WHERE id=${message.company_id}`);await audit(db,'EMAIL_SENT',{messageId:message.id,gmailMessageId:result.messageId,mode},message.company_id,job.id);if(deps.notifier)await deps.notifier.notify('EMAIL_SENT',`Correo enviado a ${message.to_email}`);return result;

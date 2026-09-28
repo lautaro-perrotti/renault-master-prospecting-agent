@@ -3,13 +3,13 @@ import type {Config} from '../config.js';
 import {Buffer} from 'node:buffer';
 
 export type GmailMessage={id:string;threadId?:string;from?:string;to?:string;subject?:string;body:string;internalDate?:string;idempotencyKey?:string};
-export type OutboundMessage={to:string;subject:string;body:string;threadId?:string;inReplyTo?:string;idempotencyKey:string};
+export type OutboundMessage={to:string;subject:string;body:string;htmlBody?:string;threadId?:string;inReplyTo?:string;idempotencyKey:string};
 export type GmailDraftResult={draftId?:string;messageId?:string;threadId?:string};
 export interface GmailTransport{send(input:OutboundMessage):Promise<{messageId?:string;threadId?:string}>;createDraft?(input:OutboundMessage):Promise<GmailDraftResult>;listInbox():Promise<Array<{id?:string}>>;getMessage(id:string):Promise<GmailMessage>;findByIdempotencyKey?(key:string):Promise<{messageId?:string;threadId?:string}|undefined>;findDraftByIdempotencyKey?(key:string):Promise<GmailDraftResult|undefined>;getProfile?():Promise<unknown>}
 
 function decode(data?:string){if(!data)return'';return Buffer.from(data.replace(/-/g,'+').replace(/_/g,'/'),'base64').toString('utf8')}
 export function encodeHeader(value:string){return /[^\x20-\x7e]/.test(value)?`=?UTF-8?B?${Buffer.from(value,'utf8').toString('base64')}?=`:value}
-export function rawMime(input:OutboundMessage){const headers=[`To: ${input.to}`,`Subject: ${encodeHeader(input.subject)}`,'MIME-Version: 1.0','Content-Type: text/plain; charset=utf-8',`X-Renault-Idempotency-Key: ${input.idempotencyKey}`,input.inReplyTo?`In-Reply-To: ${input.inReplyTo}`:''];return[...headers,'',input.body].join('\r\n')}
+export function rawMime(input:OutboundMessage){if(!input.htmlBody){const headers=[`To: ${input.to}`,`Subject: ${encodeHeader(input.subject)}`,'MIME-Version: 1.0','Content-Type: text/plain; charset=utf-8',`X-Renault-Idempotency-Key: ${input.idempotencyKey}`,input.inReplyTo?`In-Reply-To: ${input.inReplyTo}`:''];return[...headers,'',input.body].join('\r\n')}const boundary='=_renault_master_alternative_7c2a';const headers=[`To: ${input.to}`,`Subject: ${encodeHeader(input.subject)}`,'MIME-Version: 1.0',`Content-Type: multipart/alternative; boundary="${boundary}"`,`X-Renault-Idempotency-Key: ${input.idempotencyKey}`,input.inReplyTo?`In-Reply-To: ${input.inReplyTo}`:''];return[...headers,'',`--${boundary}`,'Content-Type: text/plain; charset=utf-8','Content-Transfer-Encoding: 8bit','',input.body,`--${boundary}`,'Content-Type: text/html; charset=utf-8','Content-Transfer-Encoding: 8bit','',input.htmlBody,`--${boundary}--`].join('\r\n')}
 function bodyFromPart(part:gmail_v1.Schema$MessagePart|undefined):string{
   if(!part)return'';
   if(part.mimeType==='text/plain'&&part.body?.data)return decode(part.body.data);

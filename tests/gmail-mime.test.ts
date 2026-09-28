@@ -11,4 +11,11 @@ describe('Gmail MIME',()=>{
     expect(raw).toContain('X-Renault-Idempotency-Key: sequence:DAY_0');
     expect(raw).toContain('\r\n\r\nHola');
   });
+  it('sends HTML and text alternatives when an HTML body is available',()=>{
+    const raw=rawMime({to:'contacto@example.com',subject:'Prueba',body:'Hola',htmlBody:'<strong>Hola</strong>',idempotencyKey:'sequence:DAY_0'});
+    expect(raw).toContain('Content-Type: multipart/alternative; boundary="=_renault_master_alternative_7c2a"');
+    expect(raw).toContain('Content-Type: text/plain; charset=utf-8');
+    expect(raw).toContain('Content-Type: text/html; charset=utf-8');
+    expect(raw).toContain('<strong>Hola</strong>');
+  });
 });
