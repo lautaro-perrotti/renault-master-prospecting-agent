@@ -7,6 +7,7 @@ const config={SENDER_NAME:'Sender',EMAIL_TEMPLATE:'transport-intro-v1'} as any;
 
 describe('email composition',()=>{
   it('uses persisted evidence and profile',()=>{const message=composeEmail('Empresa','logistica@empresa.com',['DistribuciÃ³n pÃºblica en CABA'],profile,config);expect(message.body).toContain('DistribuciÃ³n pÃºblica en CABA');expect(message.body).toContain('Renault Master refrigerada');expect(message.subject).toBe('Contacto comercial | Distribución y reparto')});
+  it('does not expose scraped contact evidence in the email',()=>{const message=composeEmail('Empresa','logistica@empresa.com',['La página publica jspinoso@empresa.com como contacto de Empresa.'],profile,config);expect(message.body).not.toContain('jspinoso@empresa.com');expect(message.body).not.toContain('La página publica');expect(message.body).toContain('Vi que realizan distribución y reparto para empresas en CABA y GBA.')});
   it('rejects missing evidence',()=>{expect(()=>composeEmail('Empresa','a@b.com',[],profile,config)).toThrow()});
   it('rejects missing recipient',()=>{expect(()=>composeEmail('Empresa','',['evidence'],profile,config)).toThrow()});
   it('rejects an unsupported template',()=>{expect(()=>composeEmail('Empresa','a@b.com',['evidence'],profile,{...config,EMAIL_TEMPLATE:'other'})).toThrow('UNSUPPORTED_EMAIL_TEMPLATE')});
