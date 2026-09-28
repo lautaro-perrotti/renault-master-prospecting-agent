@@ -8,6 +8,7 @@ describe('outreach batch eligibility',()=>{
   it('holds unknown, unverified and suppressed contacts',()=>{
     expect(eligibleForOutreach({...base,segment:'UNKNOWN'})).toBe(false);
     expect(eligibleForOutreach({...base,verificationStatus:'PUBLICLY_OBSERVED'})).toBe(false);
+    expect(eligibleForOutreach({...base,verificationStatus:'SYNTAX_VALID'})).toBe(false);
     expect(eligibleForOutreach({...base,suppressed:true})).toBe(false);
   });
 });

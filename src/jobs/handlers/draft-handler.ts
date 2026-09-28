@@ -14,7 +14,7 @@ function profile(config:Config){try{return config.SERVICE_PROFILE_JSON?JSON.pars
 export async function draftHandler(db:Db,config:Config,job:any,_deps:JobDependencies){
   const companyId=String(job.payload.companyId);const company=(await db.execute(sql`SELECT id,name,status FROM companies WHERE id=${companyId}`)).rows[0] as any;if(!company)throw new Error('COMPANY_NOT_FOUND');
   const suppression=await getSuppressionDecision(db,companyId);if(suppression.suppressed)return;
-  const contact=(await db.execute(sql`SELECT email FROM contacts WHERE company_id=${companyId} AND email IS NOT NULL AND invalid=false AND verification_status IN ('SYNTAX_VALID','DOMAIN_VALID','MX_VALID','DELIVERY_VALIDATED') ORDER BY (verification_status='DELIVERY_VALIDATED') DESC,(verification_status='MX_VALID') DESC LIMIT 1`)).rows[0] as any;
+  const contact=(await db.execute(sql`SELECT email FROM contacts WHERE company_id=${companyId} AND email IS NOT NULL AND invalid=false AND verification_status IN ('DOMAIN_VALID','MX_VALID','DELIVERY_VALIDATED') ORDER BY (verification_status='DELIVERY_VALIDATED') DESC,(verification_status='MX_VALID') DESC LIMIT 1`)).rows[0] as any;
   const evidence=(await db.execute(sql`SELECT id,excerpt FROM evidence WHERE company_id=${companyId} ORDER BY observed_at DESC LIMIT 3`)).rows as any[];
   if(!contact||!evidence.length){await audit(db,'DRAFT_SKIPPED',{reason:!contact?'NO_CONTACT':'NO_EVIDENCE'},companyId,job.id);return}
   let campaign=(await db.execute(sql`SELECT id FROM campaigns WHERE name=${campaignName}`)).rows[0] as any;if(!campaign)campaign=(await db.execute(sql`INSERT INTO campaigns(name,status) VALUES(${campaignName},'ACTIVE') ON CONFLICT(name) DO UPDATE SET status=excluded.status RETURNING id`)).rows[0];
