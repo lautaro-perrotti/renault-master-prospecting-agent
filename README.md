@@ -145,4 +145,18 @@ npm run gmail:oauth
 
 El flujo solicita el consentimiento de Gmail y muestra el refresh token una sola vez. Guardarlo en `.env` como `GOOGLE_REFRESH_TOKEN`; no copiarlo al repositorio ni a los reportes.
 
-La identidad del remitente configurada para los drafts es `R&M hnos. logistica`, `rymhermanos.logistica@gmail.com` y `1160397716`. Estos valores se usan únicamente en la firma del mensaje; el destinatario siempre debe provenir de un contacto prospectado persistido.
+La identidad del remitente configurada para los drafts es `R&M hermanos`, `rymhermanos.logistica@gmail.com` y `1160397716`. Estos valores se usan únicamente en la firma del mensaje; el destinatario siempre debe provenir de un contacto prospectado persistido.
+
+## Preview de plantilla HTML
+
+La plantilla HTML profesional se puede regenerar con:
+
+```text
+npm run email:preview
+```
+
+El resultado queda en `dev/email-preview.html` y contiene las variantes `GENERAL_TRANSPORT`, `COLD_CHAIN` y `OUTSOURCING_SIGNAL` con datos ficticios. La plantilla enviada usa tablas, estilos inline, ancho máximo de 600px, Arial/Helvetica, un único CTA de WhatsApp y una versión `text/plain` equivalente. Si `EMAIL_LOGO_URL` está vacío, muestra el texto `R&M hermanos` como fallback.
+
+La propuesta comercial de la plantilla enfatiza una unidad de uso exclusivo para cada empresa: puede ser de carga seca o preparada para frio, y contratarse de manera permanente o por hora. El asunto usa `Unidad exclusiva de transporte para {{companyName}}`.
+
+La propuesta ahora aclara que la unidad exclusiva puede trabajar con carga seca, refrigerada o congelada. También comunica que los choferes altamente especializados pueden cubrir entregas sin acompañamiento de personal de la empresa, cobranzas y trato directo con clientes.

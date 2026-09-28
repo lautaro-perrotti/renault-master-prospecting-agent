@@ -145,6 +145,34 @@ El gate de esta iteración es `TARGETING_NEEDS_TUNING`: la cobertura GOOD+MAYBE 
 
 ## Identidad del remitente - 2026-09-23
 
-- Se configuraron `SENDER_NAME`, `SENDER_EMAIL` y `SENDER_PHONE` para R&M hnos. logistica.
+- Se configuraron `SENDER_NAME`, `SENDER_EMAIL` y `SENDER_PHONE` para R&M hermanos.
 - La plantilla agrega esos datos a la firma del draft.
 - El correo remitente real lo determina la cuenta autenticada en Gmail; `SENDER_EMAIL` no reemplaza la validacion OAuth.
+
+## Plantilla HTML de prospeccion - 2026-09-23
+
+- Se agregaron `renderProspectingEmailHtml(data)` y `renderProspectingEmailText(data)` con el mismo contenido comercial.
+- La variante visual usa tablas, estilos inline, ancho maximo de 600px, colores de marca y un CTA unico hacia WhatsApp.
+- El bloque de transporte refrigerado se renderiza solo con `showRefrigerationCapability=true`.
+- El logo usa `logoUrl` cuando esta configurado y muestra `R&M hermanos` como fallback textual cuando no hay imagen.
+- Se agregaron las variantes de contenido `GENERAL_TRANSPORT`, `COLD_CHAIN` y `OUTSOURCING_SIGNAL` sin duplicar el HTML.
+- Se agregaron validaciones contra HTML no escapado, scripts, formularios, pixels de tracking, URLs de WhatsApp invalidas y valores `undefined`/`null`.
+- Preview generado en `dev/email-preview.html` mediante `npm run email:preview`.
+- Esta iteracion no ejecuto Gmail, OAuth, Sheets, Telegram ni envio alguno.
+
+## Ajuste de propuesta comercial - 2026-09-24
+
+- La plantilla ofrece una unidad de uso exclusivo para la empresa destinataria.
+- La modalidad puede ser permanente o por hora.
+- La propuesta contempla carga seca o una unidad preparada para frio.
+- Las tres badges principales ahora son `Unidad exclusiva`, `Carga seca o refrigerada` y `Permanente o por hora`.
+- El bloque adicional de unidad refrigerada y congelada sigue dependiendo de `showRefrigerationCapability`.
+- No se envio correo ni se hizo commit o push.
+
+## Ajuste de servicio y choferes - 2026-09-24
+
+- La plantilla menciona carga seca, refrigerada y congelada.
+- La unidad exclusiva puede contratarse de forma permanente o por hora.
+- Se agrego una propuesta configurable para choferes altamente especializados, entregas sin acompanamiento, cobranzas y trato directo con clientes.
+- El mismo contenido existe en HTML y texto plano.
+- No se envio correo ni se hizo commit o push.

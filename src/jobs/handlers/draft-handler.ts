@@ -9,7 +9,7 @@ import {enqueue} from '../queue.js';
 import {getSuppressionDecision} from '../../outreach/suppression.js';
 
 const campaignName='DEFAULT_TRANSPORT_OUTREACH';
-function profile(config:Config){try{return config.SERVICE_PROFILE_JSON?JSON.parse(config.SERVICE_PROFILE_JSON):{vehicle:'Renault Master con opción refrigerada',temperatureCapability:'configurada segÃºn carga',baseLocation:config.BASE_LOCATION,coverage:config.SERVICE_COVERAGE.split(','),availability:'a coordinar',cargoTypes:['mercadería seca, alimentos refrigerados y congelados'],certifications:[],documentation:[],contactPerson:'',phone:'',videoUrl:''}}catch{throw new Error('INVALID_SERVICE_PROFILE_JSON')}}
+function profile(config:Config){try{return config.SERVICE_PROFILE_JSON?JSON.parse(config.SERVICE_PROFILE_JSON):{vehicle:'4 Renault Master',temperatureCapability:'configurada segÃºn carga',baseLocation:config.BASE_LOCATION,coverage:config.SERVICE_COVERAGE.split(','),availability:'a coordinar',cargoTypes:['mercadería seca, alimentos refrigerados y congelados'],certifications:[],documentation:[],contactPerson:'',phone:'',videoUrl:'',showRefrigerationCapability:false}}catch{throw new Error('INVALID_SERVICE_PROFILE_JSON')}}
 export async function draftHandler(db:Db,config:Config,job:any,_deps:JobDependencies){
   const companyId=String(job.payload.companyId);const company=(await db.execute(sql`SELECT id,name,status FROM companies WHERE id=${companyId}`)).rows[0] as any;if(!company)throw new Error('COMPANY_NOT_FOUND');
   const suppression=await getSuppressionDecision(db,companyId);if(suppression.suppressed)return;

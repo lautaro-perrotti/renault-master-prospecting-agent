@@ -1,43 +1,12 @@
+import {renderProspectingEmail, type ProspectingEmailTemplateData} from './prospecting-email.js';
 import {z} from 'zod';
 
 export const TRANSPORT_INTRO_TEMPLATE='transport-intro-v1';
-
-const TemplateInput=z.object({
-  companyName:z.string().trim().min(1),
-  recipientEmail:z.string().email(),
-  evidenceExcerpt:z.string().trim().min(1),
-  vehicle:z.string().trim().min(1),
-  temperatureCapability:z.string().trim().optional().default(''),
-  coverage:z.array(z.string().trim().min(1)).min(1),
-  senderName:z.string().trim().min(1),
-  senderPhone:z.string().trim().optional().default(''),
-  senderEmail:z.string().email().optional()
-});
-
-export type TransportIntroTemplateInput=z.input<typeof TemplateInput>;
+export type TransportIntroTemplateInput={companyName:string;recipientEmail:string;evidenceExcerpt:string;vehicle:string;temperatureCapability?:string;coverage:string[];senderName:string;senderPhone?:string;senderEmail?:string;showRefrigerationCapability?:boolean;logoUrl?:string};
 
 export function renderTransportIntroV1(input:TransportIntroTemplateInput){
-  const data=TemplateInput.parse(input);
-  const coverage=data.coverage.join(', ');
-  const capability=data.temperatureCapability?` Podemos trabajar con capacidad ${data.temperatureCapability}.`:'';
-  const phone=data.senderPhone?`\n${data.senderPhone}`:'';
-  const email=data.senderEmail?`\n${data.senderEmail}`:'';
-  return{
-    templateKey:TRANSPORT_INTRO_TEMPLATE,
-    to:data.recipientEmail,
-    subject:`Capacidad de transporte para ${data.companyName}`,
-    body:[
-      `Hola, ${data.companyName}.`,
-      '',
-      `Vimos públicamente: ${data.evidenceExcerpt}`,
-      '',
-      `Estamos ofreciendo ${data.vehicle} para distribución y entregas en ${coverage}.${capability}`,
-      'Trabajamos con mercadería seca, refrigerada o mixta según el recorrido y la configuración necesaria.',
-      '',
-      '¿Les sirve conversar sobre recorridos, picos de demanda o entregas que hoy tercerizan?',
-      '',
-      'Saludos,',
-      `${data.senderName}${phone}${email}`
-    ].join('\n')
-  };
+  const recipientEmail=z.string().email().parse(input.recipientEmail);
+  const data:ProspectingEmailTemplateData={companyName:input.companyName,recipientGreeting:`equipo de ${input.companyName}`,personalizedEvidence:input.evidenceExcerpt,valueProposition:'Podemos asignar una unidad de uso exclusivo para su empresa, de carga seca, refrigerada o congelada, con modalidad permanente o por hora, seg\u00fan la necesidad de la operaci\u00f3n.',logoUrl:input.logoUrl,showRefrigerationCapability:input.showRefrigerationCapability??false,senderName:input.senderName,senderPhone:input.senderPhone,senderEmail:input.senderEmail,fleetDescription:input.vehicle,coverageDescription:input.coverage.join(' y '),capabilities:['Unidad exclusiva','Carga seca, refrigerada o congelada','Permanente o por hora']};
+  const rendered=renderProspectingEmail(data);
+  return{templateKey:TRANSPORT_INTRO_TEMPLATE,to:recipientEmail,subject:rendered.subject,body:rendered.body,htmlBody:rendered.htmlBody};
 }
