@@ -17,7 +17,7 @@ const TemplateDataSchema=z.object({
   logoUrl:z.string().url().optional(),
   whatsappUrl:z.string().url().default(DEFAULT_WHATSAPP_URL).refine(value=>{const url=new URL(value);return url.protocol==='https:'&&url.hostname==='wa.me'},{message:'whatsappUrl must use https://wa.me'}),
   websiteUrl:z.string().url().default(DEFAULT_WEBSITE_URL),
-  showRefrigerationCapability:z.boolean().default(false),
+  showRefrigerationCapability:z.boolean().default(true),subjectVariant:z.enum(['GENERAL','COLD_CHAIN']).default('GENERAL'),
   senderName:z.string().trim().min(1),
   senderEmail:z.string().email().optional(),
   senderPhone:z.string().trim().optional().default(''),
@@ -52,4 +52,4 @@ export function renderProspectingEmailText(input:ProspectingEmailTemplateData){
   return[`Hola ${data.recipientGreeting},`,'',data.personalizedEvidence,'',`Desde R&M hermanos brindamos servicios de distribuci\u00f3n y reparto para empresas en ${data.coverageDescription}, con una flota de ${data.fleetDescription}.`,data.valueProposition,data.driverServiceDescription,'',capabilities,refrigeration,data.ctaQuestion,'',`Consultar disponibilidad: ${data.whatsappUrl}`,'','O simplemente respondan este correo y seguimos por ac\u00e1.','',`Saludos,\n${signature}`,'',`Este mensaje fue enviado porque encontramos informaci\u00f3n p\u00fablica de contacto de ${data.companyName} y consideramos que nuestros servicios podr\u00edan ser relevantes para su operaci\u00f3n.`,'Si prefieren no recibir nuevos mensajes de nuestra parte, respondan indicando "No contactar".'].join('\n').replace(/\n{3,}/g,'\n\n')
 }
 
-export function renderProspectingEmail(input:ProspectingEmailTemplateData){const data=TemplateDataSchema.parse(input);const subject=data.showRefrigerationCapability?'Contacto comercial | Transporte refrigerado y congelado':'Contacto comercial | Distribución y reparto';return{templateKey:PROSPECTING_EMAIL_TEMPLATE,subject,htmlBody:renderProspectingEmailHtml(data),body:renderProspectingEmailText(data)}}
+export function renderProspectingEmail(input:ProspectingEmailTemplateData){const data=TemplateDataSchema.parse(input);const subject=data.subjectVariant==='COLD_CHAIN'?'Contacto comercial | Transporte refrigerado y congelado':'Contacto comercial | Distribuci\u00f3n y reparto';return{templateKey:PROSPECTING_EMAIL_TEMPLATE,subject,htmlBody:renderProspectingEmailHtml(data),body:renderProspectingEmailText(data)}}
