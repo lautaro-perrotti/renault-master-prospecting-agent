@@ -1,4 +1,4 @@
-import {z} from 'zod';
+﻿import {z} from 'zod';
 
 export const PROSPECTING_EMAIL_TEMPLATE='prospecting-email-v1';
 export const DEFAULT_WHATSAPP_URL='https://wa.me/541160397716?text=Hola%2C%20quer%C3%ADa%20consultar%20por%20los%20servicios%20de%20log%C3%ADstica%20de%20R%26M%20hnos.';
@@ -52,4 +52,4 @@ export function renderProspectingEmailText(input:ProspectingEmailTemplateData){
   return[`Hola ${data.recipientGreeting},`,'',data.personalizedEvidence,'',`Desde R&M hermanos brindamos servicios de distribuci\u00f3n y reparto para empresas en ${data.coverageDescription}, con una flota de ${data.fleetDescription}.`,data.valueProposition,data.driverServiceDescription,'',capabilities,refrigeration,data.ctaQuestion,'',`Consultar disponibilidad: ${data.whatsappUrl}`,'','O simplemente respond\u00e9 este correo y seguimos por ac\u00e1.','',`Saludos,\n${signature}`,'',`Este mensaje fue enviado porque encontramos informaci\u00f3n p\u00fablica de contacto de ${data.companyName} y consideramos que nuestros servicios podr\u00edan ser relevantes para su operaci\u00f3n.`,'Si prefer\u00eds no recibir nuevos mensajes de nuestra parte, respond\u00e9 indicando "No contactar".'].join('\n').replace(/\n{3,}/g,'\n\n')
 }
 
-export function renderProspectingEmail(input:ProspectingEmailTemplateData){const data=TemplateDataSchema.parse(input);const subject=data.showRefrigerationCapability?`Transporte refrigerado y congelado para ${data.companyName}`:`Una unidad exclusiva para la distribuci\u00f3n de ${data.companyName}`;return{templateKey:PROSPECTING_EMAIL_TEMPLATE,subject,htmlBody:renderProspectingEmailHtml(data),body:renderProspectingEmailText(data)}}
+export function renderProspectingEmail(input:ProspectingEmailTemplateData){const data=TemplateDataSchema.parse(input);const subject=data.showRefrigerationCapability?'Contacto comercial | Transporte refrigerado y congelado':'Contacto comercial | Distribución y reparto';return{templateKey:PROSPECTING_EMAIL_TEMPLATE,subject,htmlBody:renderProspectingEmailHtml(data),body:renderProspectingEmailText(data)}}

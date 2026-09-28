@@ -1,4 +1,4 @@
-import {sql} from 'drizzle-orm';
+﻿import {sql} from 'drizzle-orm';
 import type {Config} from '../../config.js';
 import type {Db} from '../../db/client.js';
 import {audit} from '../../audit.js';
@@ -7,6 +7,7 @@ import type {JobDependencies} from '../dependencies.js';
 import {effectiveMode} from '../runtime-config.js';
 import {enqueue} from '../queue.js';
 import {getSuppressionDecision} from '../../outreach/suppression.js';
+import {classifyPersistedRefrigeration} from '../../qualification/refrigeration.js';
 
 const campaignName='DEFAULT_TRANSPORT_OUTREACH';
 function profile(config:Config){try{return config.SERVICE_PROFILE_JSON?JSON.parse(config.SERVICE_PROFILE_JSON):{vehicle:'4 Renault Master',temperatureCapability:'configurada segÃºn carga',baseLocation:config.BASE_LOCATION,coverage:config.SERVICE_COVERAGE.split(','),availability:'a coordinar',cargoTypes:['mercadería seca, alimentos refrigerados y congelados'],certifications:[],documentation:[],contactPerson:'',phone:'',videoUrl:'',showRefrigerationCapability:false}}catch{throw new Error('INVALID_SERVICE_PROFILE_JSON')}}
@@ -20,9 +21,9 @@ export async function draftHandler(db:Db,config:Config,job:any,_deps:JobDependen
   let sequence=(await db.execute(sql`SELECT id FROM message_sequences WHERE company_id=${companyId} AND campaign_id=${campaign.id} AND status IN ('READY','ACTIVE','PAUSED') LIMIT 1`)).rows[0] as any;
   if(!sequence)sequence=(await db.execute(sql`INSERT INTO message_sequences(company_id,campaign_id,status,next_step,next_run_at) VALUES(${companyId},${campaign.id},'READY','DAY_0',now()) ON CONFLICT(company_id,campaign_id) DO UPDATE SET status=message_sequences.status RETURNING id`)).rows[0];
   const existing=(await db.execute(sql`SELECT * FROM messages WHERE sequence_id=${sequence.id} AND sequence_step='DAY_0' LIMIT 1`)).rows[0] as any;
-  const composed=composeEmail(company.name,contact.email,evidence.map(x=>x.excerpt),profile(config),config);const message=existing??(await db.execute(sql`INSERT INTO messages(company_id,sequence_id,direction,to_email,subject,body,html_body,idempotency_key,sequence_step,outbound_state) VALUES(${companyId},${sequence.id},'OUTBOUND',${composed.to},${composed.subject},${composed.body},${composed.htmlBody},${`${sequence.id}:DAY_0`},'DAY_0','READY') ON CONFLICT(sequence_id,sequence_step) DO UPDATE SET body=excluded.body,html_body=excluded.html_body,subject=excluded.subject,to_email=excluded.to_email RETURNING *`)).rows[0];
-  await db.execute(sql`UPDATE companies SET status=CASE WHEN status IN ('BLOCKED','STOPPED') THEN status ELSE 'DRAFTED' END,updated_at=now() WHERE id=${companyId}`);await audit(db,'DRAFT_CREATED',{messageId:message.id,sequenceId:sequence.id,evidenceIds:evidence.map(x=>x.id),recipient:contact.email},companyId,job.id);
-  const mode=await effectiveMode(db,config);const qualification=(await db.execute(sql`SELECT decision FROM qualifications WHERE company_id=${companyId} ORDER BY created_at DESC LIMIT 1`)).rows[0] as any;
-  if(mode==='AUTO'&&config.OUTREACH_ENABLED&&qualification?.decision==='AUTO_ELIGIBLE')await enqueue(db,'SEND',{companyId,messageId:message.id},new Date(),{idempotencyKey:`SEND:${message.id}`});
+  const qualification=(await db.execute(sql`SELECT use_case,refrigeration_fit,decision FROM qualifications WHERE company_id=${companyId} ORDER BY created_at DESC LIMIT 1`)).rows[0] as any;const research=(await db.execute(sql`SELECT use_case,refrigeration_fit FROM research_results WHERE company_id=${companyId} ORDER BY created_at DESC LIMIT 1`)).rows[0] as any;const refrigerationSegment=classifyPersistedRefrigeration({useCase:qualification?.use_case,refrigerationFit:qualification?.refrigeration_fit,fallbackUseCase:research?.use_case,fallbackRefrigerationFit:research?.refrigeration_fit});const composed=composeEmail(company.name,contact.email,evidence.map(x=>x.excerpt),{...profile(config),showRefrigerationCapability:refrigerationSegment==='REFRIGERATED'},config);const message=existing??(await db.execute(sql`INSERT INTO messages(company_id,sequence_id,direction,to_email,subject,body,html_body,idempotency_key,sequence_step,outbound_state) VALUES(${companyId},${sequence.id},'OUTBOUND',${composed.to},${composed.subject},${composed.body},${composed.htmlBody},${`${sequence.id}:DAY_0`},'DAY_0','READY') ON CONFLICT(sequence_id,sequence_step) DO UPDATE SET body=excluded.body,html_body=excluded.html_body,subject=excluded.subject,to_email=excluded.to_email RETURNING *`)).rows[0];
+  await db.execute(sql`UPDATE companies SET status=CASE WHEN status IN ('BLOCKED','STOPPED') THEN status ELSE 'DRAFTED' END,updated_at=now() WHERE id=${companyId}`);await audit(db,'DRAFT_CREATED',{messageId:message.id,sequenceId:sequence.id,evidenceIds:evidence.map(x=>x.id),recipient:contact.email,refrigerationSegment,classificationSource:qualification?'qualification':research?'research':'none'},companyId,job.id);
+  const mode=await effectiveMode(db,config);
+  if(mode==='AUTO'&&config.OUTREACH_ENABLED&&qualification?.decision==='AUTO_ELIGIBLE'&&refrigerationSegment!=='UNKNOWN')await enqueue(db,'SEND',{companyId,messageId:message.id},new Date(),{idempotencyKey:`SEND:${message.id}`});
   return message;
 }

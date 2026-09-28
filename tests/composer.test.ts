@@ -1,4 +1,4 @@
-import {describe,expect,it} from 'vitest';
+﻿import {describe,expect,it} from 'vitest';
 import {composeEmail} from '../src/outreach/composer.js';
 import {renderTransportIntroV1} from '../src/outreach/templates/transport-intro-v1.js';
 
@@ -6,7 +6,7 @@ const profile={vehicle:'Renault Master refrigerada',temperatureCapability:'-18 a
 const config={SENDER_NAME:'Sender',EMAIL_TEMPLATE:'transport-intro-v1'} as any;
 
 describe('email composition',()=>{
-  it('uses persisted evidence and profile',()=>{const message=composeEmail('Empresa','logistica@empresa.com',['Distribución pública en CABA'],profile,config);expect(message.body).toContain('Distribución pública en CABA');expect(message.body).toContain('Renault Master refrigerada');expect(message.subject).toContain('Empresa')});
+  it('uses persisted evidence and profile',()=>{const message=composeEmail('Empresa','logistica@empresa.com',['DistribuciÃ³n pÃºblica en CABA'],profile,config);expect(message.body).toContain('DistribuciÃ³n pÃºblica en CABA');expect(message.body).toContain('Renault Master refrigerada');expect(message.subject).toBe('Contacto comercial | Distribución y reparto')});
   it('rejects missing evidence',()=>{expect(()=>composeEmail('Empresa','a@b.com',[],profile,config)).toThrow()});
   it('rejects missing recipient',()=>{expect(()=>composeEmail('Empresa','',['evidence'],profile,config)).toThrow()});
   it('rejects an unsupported template',()=>{expect(()=>composeEmail('Empresa','a@b.com',['evidence'],profile,{...config,EMAIL_TEMPLATE:'other'})).toThrow('UNSUPPORTED_EMAIL_TEMPLATE')});
